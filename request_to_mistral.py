@@ -1,7 +1,8 @@
-MISTAL_API_KEY = "x"
+MISTAL_API_KEY = "введите ваш API"
 
 from mistralai import Mistral
 import base64
+from typing import List, Tuple, Dict
 
 class TextRequest:
     """
@@ -94,3 +95,79 @@ class ImageRequest:
 # # print(text_response)
 # image_response = image_request.send("что изображено на картинке", r"C:\Users\User-X\Desktop\Python\Request_to_Mistral\357d7153677451.593d686ecec5f.png", model= "pixtral-12b-2409")
 # print(image_response)
+
+class ChatFacade:
+    def __init__(self, api_key: str):
+        self.api_key = api_key
+        self.models = {
+            "text": ["mistral-large-latest"],
+            "image": ["pixtral-12b-2409"]
+        }
+        self.set_request: TextRequest | ImageRequest = self.__set_request()
+        self.model: str = self.__set_model()
+        self.history = []
+
+    def __set_request(self) -> TextRequest | ImageRequest:
+        """
+        Возвращает выбранный объект в зависимость от выбора пользователя
+        """
+        mode = input("Введите режим запроса (1 - текстовый, 2 - с изображением): ")
+
+        if mode == "1":
+            return TextRequest(api_key=self.api_key)
+        elif mode == "2":
+            return ImageRequest(api_key=self.api_key)
+        else:
+            raise ValueError("Неверный режим запроса")
+
+    def __set_model(self) -> str:
+        """
+        Возвращается выбранную модель для запроса
+        """
+        model_type = 'text' if isinstance(self.set_request, TextRequest) else 'image'
+        model = input(f"Выберите модель из списка {self.models[model_type]}: ")
+        if model not in self.models[model_type]:
+            raise ValueError('Неверная модель')
+        return model
+
+    def ask_question(self, text: str, image_path: str = None) -> dict:
+        """
+        Основной метод для отправки запроса
+        """
+        # Создаем сообщение пользователя
+        user_message = {"role": "user", "content": text}
+        # Получаем текущую историю
+        current_history = [msg for _, msg in self.history]
+        if image_path:
+            response = self.set_request.send(text=text, image_path=image_path, model=self.model)
+        else:
+            response = self.set_request.send(text=text, model=self.model)
+        # Обновляем историю
+        self.history.append((text, user_message))
+        self.history.append((text, response))
+        return response
+
+    def __call__(self):
+        """
+        Запуск фасада
+        """
+        print("Здравствуйте! Я готов помочь вам. Для выхода введите exit")
+        while True:
+            text = input("\nВведите текст запроса: ")
+            if text.lower() == "exit":
+                print('До свидания!')
+                break
+            image_path = None
+            if isinstance(self.set_request, ImageRequest):
+                image_path = input("Введите путь к изображению: ")
+            response = self.ask_question(text=text, image_path=image_path if image_path else None)
+
+            # Выводим последний ответ
+            print(response)
+
+chat_facade = ChatFacade(api_key=MISTAL_API_KEY)
+chat_facade()
+
+chat_facade = ChatFacade(api_key=MISTAL_API_KEY)
+chat_facade()
+
